@@ -1,39 +1,104 @@
-# This workflow will install Python dependencies, run tests and lint with a single version of Python
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
-
-name: Python application
+name: release
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-
-permissions:
-  contents: read
+    tags:
+      - v*
 
 jobs:
-  build:
 
+  # 创建发布
+  release:
     runs-on: ubuntu-latest
-
+    # 输出变量
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v3
-      with:
-        python-version: "3.10"
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install flake8 pytest
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    - name: Lint with flake8
-      run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Test with pytest
-      run: |
-        pytest
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: |
+            Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+
+  # 打包上传
+  build-windows-app:
+    needs: release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          pip install fastapi==0.108.0
+          pip install pyinstaller==6.3.0
+          pip install pywebview==4.4.1
+          pip install uvicorn==0.25.0
+
+      - name: Build executable
+        run: |
+          pyinstaller -w -F --add-data static:static client.py
+
+      - name: Upload executables
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
+        with:
+          # 获取变量
+          upload_url: ${{ needs.release.outputs.upload_url }}
+          asset_path: ./dist/client.exe
+          asset_name: client.exe
+          asset_content_type: application/octet-stream
+
+  build-macos-linux:
+    needs: release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        # ubuntu macos 打包
+        os: [ ubuntu-latest, macos-latest ]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install fastapi==0.108.0
+          pip install pyinstaller==6.3.0
+          pip install pywebview==4.4.1
+          pip install uvicorn==0.25.0
+
+      - name: Build executable
+        # 打包因为github 上传附件接口不支持文件夹，
+        # macos打包其实是个xx.app文件夹，所以如果是macos打包zip压缩一下
+        run: |
+          pyinstaller -w -F --add-data static:static client.py
+          if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+            zip -r -X client-macos.zip ./dist/client.app
+          fi
+
+      - name: Upload executables
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
+        with:
+          # 获取变量
+          upload_url: ${{ needs.release.outputs.upload_url }}
+          asset_path: |
+            ${{ matrix.os == 'macos-latest' && './client-macos.zip' || './dist/client' }}
+          asset_name: |
+            ${{ matrix.os == 'macos-latest' && 'client-macos.zip' || 'client-linux' }}
+          asset_content_type: application/octet-stream
