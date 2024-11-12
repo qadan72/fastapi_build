@@ -82,8 +82,6 @@ jobs:
           pip install uvicorn==0.25.0
 
       - name: Build executable
-        # 打包因为github 上传附件接口不支持文件夹，
-        # macos打包其实是个xx.app文件夹，所以如果是macos打包zip压缩一下
         run: |
           pyinstaller -w -F --add-data static:static client.py
           if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
