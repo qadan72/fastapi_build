@@ -45,10 +45,6 @@ jobs:
       - name: Build executable
         run: |
           pyinstaller --onefile --name fastapi_app app.py
-<<<<<<< HEAD
-=======
-
->>>>>>> 92bc77440b955fdd5ceca74340519c02abbf4aaf
       - name: Upload executables
         uses: actions/upload-release-asset@v1
         env:
