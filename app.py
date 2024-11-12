@@ -1,5 +1,7 @@
+# app.py
 from typing import Union
 from fastapi import FastAPI
+import uvicorn
 
 app = FastAPI()
 
@@ -11,7 +13,5 @@ def read_root():
 def read_item(item_id: int, q: Union[str, None] = None):
     return {"item_id": item_id, "q": q}
 
-# 添加以下代码，便于使用 uvicorn 直接运行此文件
 if __name__ == "__main__":
-    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
