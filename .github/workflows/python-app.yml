@@ -47,7 +47,7 @@ jobs:
 
       - name: Build executable
         run: |
-          pyinstaller -w -F --add-data static:static client.py
+          pyinstaller --onefile --name fastapi_app app.py
 
       - name: Upload executables
         uses: actions/upload-release-asset@v1
@@ -83,7 +83,7 @@ jobs:
 
       - name: Build executable
         run: |
-          pyinstaller -w -F --add-data static:static client.py
+          pyinstaller --onefile --name fastapi_app app.py
           if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
             zip -r -X client-macos.zip ./dist/client.app
           fi
