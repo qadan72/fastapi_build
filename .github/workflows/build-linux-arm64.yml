@@ -1,0 +1,48 @@
+name: Build FastAPI for Linux ARM64
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-linux-arm64:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install fastapi==0.108.0
+          pip install pyinstaller==6.3.0
+          pip install pywebview==4.4.1
+          pip install uvicorn==0.25.0
+
+      - name: Prepare cross-compilation for ARM64
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Build executable for Linux ARM64
+        run: |
+          pyinstaller --onefile --name fastapi_app app.py \
+          --distpath ./dist/arm64
+
+      - name: Archive executable
+        run: |
+          tar -czvf fastapi_app-linux-arm64.tar.gz -C ./dist/arm64 fastapi_app
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: fastapi_app-linux-arm64
+          path: fastapi_app-linux-arm64.tar.gz
