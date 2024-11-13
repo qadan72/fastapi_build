@@ -32,5 +32,5 @@ jobs:
         with:
           context: .
           platforms: linux/amd64,linux/arm64,linux/arm/v7
-          push: false  # 设置为 true 以推送到 Docker Hub
-          tags: your-dockerhub-username/fastapi-app:latest
+          push: true  # 设置为 true 以推送到 Docker Hub
+          tags: qadan72/fastapi-app:latest
