@@ -8,23 +8,6 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-    steps:
-      - name: Create release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          body: |
-            Release ${{ github.ref }}
-          draft: false
-          prerelease: false
-  release2:
-    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -36,21 +19,17 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install fastapi pyinstaller pywebview uvicorn
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu
+          pip install fastapi pyinstaller pywebview uvicorn
 
       - name: Build ARM64 executable
         env:
-          # 设置 ARM64 架构，使用交叉编译工具 gcc-aarch64-linux-gnu
-          CC: aarch64-linux-gnu-gcc
-          CXX: aarch64-linux-gnu-g++
-          AR: aarch64-linux-gnu-ar
-          LD: aarch64-linux-gnu-ld
           CFLAGS: "-march=armv8-a"
+          CC: aarch64-linux-gnu-gcc  # 指定交叉编译器
         run: |
-          # 通过 PyInstaller 打包生成 ARM64 可执行文件
           pyinstaller --onefile --name fastapi_app app.py
+          file ./dist/fastapi_app  # 确认文件类型
 
       - name: Create release if needed
         id: create_release
