@@ -1,4 +1,4 @@
-name: Build and Release ARM64 Binary
+name: Build and Release Multi-Arch Docker Image
 
 on:
   push:
@@ -8,47 +8,29 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v3
+      - name: Set up QEMU for multi-architecture support
+        uses: docker/setup-qemu-action@v2
         with:
-          python-version: "3.11"
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
-          pip install fastapi pyinstaller pywebview uvicorn
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-      - name: Build ARM64 executable
-        env:
-          CFLAGS: "-march=armv8-a"
-          CC: aarch64-linux-gnu-gcc  # 指定交叉编译器
-        run: |
-          pyinstaller --onefile --name fastapi_app app.py
-          file ./dist/fastapi_app  # 确认文件类型
-
-      - name: Create release if needed
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
         with:
-          tag_name: ${{ github.ref }}
-          release_name: "Release ${{ github.ref }}"
-          body: "Release for Linux ARM64"
-          draft: false
-          prerelease: false
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Upload ARM64 binary to release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push multi-architecture Docker image
+        uses: docker/build-push-action@v4
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./dist/fastapi_app
-          asset_name: fastapi_app-arm64
-          asset_content_type: application/octet-stream
+          context: .
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          push: false  # 设置为 true 以推送到 Docker Hub
+          tags: your-dockerhub-username/fastapi-app:latest
