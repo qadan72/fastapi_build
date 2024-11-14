@@ -1,0 +1,40 @@
+name: Build Binary for Multiple Architectures
+
+on:
+  push:
+    branches:
+      - main  # 或其他分支
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        platform: [linux/amd64, linux/arm64]  # 指定需要的架构
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # 设置 QEMU 支持跨平台编译
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      # 编译应用程序
+      - name: Build Binary
+        run: |
+          mkdir -p output
+          docker run --rm --platform=${{ matrix.platform }} \
+            -v "$(pwd):/app" -w /app \
+            python:3.9-slim bash -c "\
+              pip install --no-cache-dir pyinstaller && \
+              pyinstaller --onefile app.py && \
+              mv dist/app output/app-${{ matrix.platform }}"
+
+      # 上传二进制文件为构建产物
+      - name: Upload binary
+        uses: actions/upload-artifact@v2
+        with:
+          name: binary-${{ matrix.platform }}
+          path: output/app-${{ matrix.platform }}
